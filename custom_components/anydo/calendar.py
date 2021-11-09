@@ -12,6 +12,9 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.template import DATE_STR_FORMAT
 from homeassistant.util import dt
 
+from .api.client import Client
+from .api.task import Task
+
 from .const import (
     ALL_DAY,
     ALL_TASKS,
@@ -27,7 +30,6 @@ from .const import (
     DOMAIN,
     DUE,
     DUE_DATE,
-    DUE_DATE_STRING,
     DUE_TODAY,
     END,
     ID,
@@ -39,7 +41,6 @@ from .const import (
     OVERDUE,
     OWNER,
     REMINDER_DATE,
-    REMINDER_DATE_STRING,
     SERVICE_NEW_TASK,
     START,
     SUMMARY,
@@ -53,12 +54,10 @@ NEW_TASK_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(CONTENT): cv.string,
         vol.Optional(NOTES): cv.string,
-        vol.Optional(LIST_NAME, default="Personal"): vol.All(cv.string),
+        vol.Optional(LIST_NAME): vol.All(cv.string),
         vol.Optional(TAGS): cv.ensure_list_csv,
         vol.Optional(OWNER): cv.string,
-        vol.Exclusive(DUE_DATE_STRING, "due_date"): cv.string,
         vol.Exclusive(DUE_DATE, "due_date"): cv.string,
-        vol.Exclusive(REMINDER_DATE_STRING, "reminder_date"): cv.string,
         vol.Exclusive(REMINDER_DATE, "reminder_date"): cv.string,
     }
 )
@@ -101,15 +100,15 @@ def setup_platform(hass, config, add_entities):
     list_id_lookup = {}
     tag_id_lookup = {}
 
-    api = TodoistAPI(username, password)
-    api.sync()
+    api = Client(email=username, password=password)
+    user = api.get_user()
 
     # Setup devices:
     # Grab all lists.
-    lists = api.state[LISTS]
+    lists = user.categories()
 
     # Grab all tags
-    tags = api.state[TAGS]
+    tags = user.labels()
 
     # Add all Any.do defined lists.
     list_devices = []
@@ -161,25 +160,23 @@ def setup_platform(hass, config, add_entities):
         list_name = call.data[LIST_NAME]
         list_id = list_id_lookup[list_name.lower()]
 
-        # Create the task
-        item = api.items.add(call.data[CONTENT], list_id=list_id)
+        newTaskUser = api.get_user(refresh=True)
 
-        if TAGS in call.data:
-            task_tags = call.data[TAGS]
-            tag_ids = [tag_id_lookup[tag.lower()] for tag in task_tags]
-            item.update(tags=tag_ids)
+        args = {
+            'user': newTaskUser,
+            'title': call.data[CONTENT],
+            'categoryId': list_id,
+            'repeatingMethod': 'TASK_REPEAT_OFF',
+        }
 
         if NOTES in call.data:
-            task_notes = call.data[NOTES]
-            item.update(notes=task_notes)
+            args['note'] = call.data[NOTES]
+
+        if TAGS in call.data:
+            args['labels'] = [tag_id_lookup[tag.lower()] for tag in call.data[TAGS]]
 
         if OWNER in call.data:
-            task_owner = call.data[OWNER]
-            item.update(owner=task_owner)
-
-        _due: dict = {}
-        if DUE_DATE_STRING in call.data:
-            _due["string"] = call.data[DUE_DATE_STRING]
+            args['assignedTo'] = call.data[OWNER]
 
         if DUE_DATE in call.data:
             due_date = dt.parse_datetime(call.data[DUE_DATE])
@@ -188,32 +185,21 @@ def setup_platform(hass, config, add_entities):
                 due_date = datetime(due.year, due.month, due.day)
             # Format it in the manner Any.do expects
             due_date = dt.as_utc(due_date)
-            date_format = "%Y-%m-%dT%H:%M%S"
-            due_date = datetime.strftime(due_date, date_format)
-            _due["date"] = due_date
+            args["dueDate"] = int(due_date.timestamp())
 
-        if _due:
-            item.update(due=_due)
 
-        _reminder_due: dict = {}
-        if REMINDER_DATE_STRING in call.data:
-            _reminder_due["string"] = call.data[REMINDER_DATE_STRING]
         if REMINDER_DATE in call.data:
-            due_date = dt.parse_datetime(call.data[REMINDER_DATE])
-            if due_date is None:
+            reminder_date = dt.parse_datetime(call.data[REMINDER_DATE])
+            if reminder_date is None:
                 due = dt.parse_date(call.data[REMINDER_DATE])
-                due_date = datetime(due.year, due.month, due.day)
+                reminder_date = datetime(due.year, due.month, due.day)
             # Format it in the manner Any.do expects
-            due_date = dt.as_utc(due_date)
-            date_format = "%Y-%m-%dT%H:%M:%S"
-            due_date = datetime.strftime(due_date, date_format)
-            _reminder_due["date"] = due_date
+            reminder_date = dt.as_utc(reminder_date)
+            args["alert"] = int(reminder_date.timestamp())
 
-        if _reminder_due:
-            api.reminders.add(item["id"], due=_reminder_due)
+        # Create the task
+        Task.create(**args)
 
-        # Commit changes
-        api.commit()
         _LOGGER.debug("Created Any.do task: %s", call.data[CONTENT])
 
     hass.services.register(
@@ -240,7 +226,7 @@ class AnydoListDevice(CalendarEventDevice):
         self,
         data,
         tags,
-        token,
+        api,
         due_date_days=None,
         whitelisted_tags=None,
         whitelisted_lists=None,
@@ -249,7 +235,7 @@ class AnydoListDevice(CalendarEventDevice):
         self.data = AnydoListData(
             data,
             tags,
-            token,
+            api,
             due_date_days,
             whitelisted_tags,
             whitelisted_lists,
@@ -498,6 +484,8 @@ class AnydoListData:
 
     async def async_get_events(self, hass, start_date, end_date):
         """Get all tasks in a specific time frame."""
+        user = self._api.get_user()
+        user.categories()
         if self._id is None:
             list_task_data = [
                 task
@@ -549,8 +537,7 @@ class AnydoListData:
     def update(self):
         """Get the latest data."""
         if self._id is None:
-            self._api.reset_state()
-            self._api.sync()
+            self._api.get_user(refresh=True)
             list_task_data = [
                 task
                 for task in self._api.state[TASKS]

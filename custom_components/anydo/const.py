@@ -26,10 +26,6 @@ DESCRIPTION = "description"
 # Calendar Platform: Used in the '_get_date()' method
 DATETIME = "dateTime"
 DUE = "due"
-# Service Call: When is this task due (in natural language)?
-DUE_DATE_STRING = "due_date_string"
-# Service Call: When should user be reminded of this task (in natural language)?
-REMINDER_DATE_STRING = "reminder_date_string"
 # Attribute: When is this task due?
 # Service Call: When is this task due?
 DUE_DATE = "due_date"

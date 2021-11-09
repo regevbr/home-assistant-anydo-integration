@@ -19,7 +19,6 @@ new_task:
       name: List
       description: The name of the list this task should belong to.
       example: Errands
-      default: Personal
       selector:
         text:
     tags:
@@ -35,22 +34,10 @@ new_task:
       default: Me
       selector:
         text:
-    due_date_string:
-      name: Due date string
-      description: The day this task is due, in natural language.
-      example: Tomorrow
-      selector:
-        text:
     due_date:
       name: Due date
       description: The time this task is due, in format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS, in UTC timezone.
       example: "2019-10-22"
-      selector:
-        text:
-    reminder_date_string:
-      name: Reminder date string
-      description: When should user be reminded of this task, in natural language.
-      example: Tomorrow
       selector:
         text:
     reminder_date:
