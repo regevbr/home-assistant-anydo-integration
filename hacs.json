@@ -1,0 +1,7 @@
+{
+  "name": "Any.do",
+  "content_in_root": false,
+  "render_readme": false,
+  "domains": ["calendar"],
+  "homeassistant": "2011.11.0"
+}

@@ -1,0 +1,8 @@
+{
+  "domain": "anydo",
+  "name": "Any.do",
+  "version": "0.0.1",
+  "documentation": "https://github.com/regevbr/home-assistant-anydo-integration",
+  "codeowners": ["@regevbr"],
+  "iot_class": "cloud_polling"
+}

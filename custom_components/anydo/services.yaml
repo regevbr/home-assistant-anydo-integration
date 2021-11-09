@@ -1,0 +1,61 @@
+new_task:
+  name: New task
+  description: Create a new task and add it to a list.
+  fields:
+    content:
+      name: Content
+      description: The content of the task.
+      required: true
+      example: Pick up the mail.
+      selector:
+        text:
+    notes:
+      name: Notes
+      description: The notes of the task.
+      example: Don't forget to take a recipt.
+      selector:
+        text:
+    list:
+      name: List
+      description: The name of the list this task should belong to.
+      example: Errands
+      default: Personal
+      selector:
+        text:
+    tags:
+      name: Tags
+      description: Any tags that you want to apply to this task, separated by a comma.
+      example: Chores, Delivieries
+      selector:
+        text:
+    owner:
+      name: Owner
+      description: The owner of this task.
+      example: Jhon
+      default: Me
+      selector:
+        text:
+    due_date_string:
+      name: Due date string
+      description: The day this task is due, in natural language.
+      example: Tomorrow
+      selector:
+        text:
+    due_date:
+      name: Due date
+      description: The time this task is due, in format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS, in UTC timezone.
+      example: "2019-10-22"
+      selector:
+        text:
+    reminder_date_string:
+      name: Reminder date string
+      description: When should user be reminded of this task, in natural language.
+      example: Tomorrow
+      selector:
+        text:
+    reminder_date:
+      name: Reminder date
+      description: When should user be reminded of this task, in format YYYY-MM-DDTHH:MM:SS, in UTC timezone.
+      example: "2019-10-22T10:30:00"
+      selector:
+        text:
