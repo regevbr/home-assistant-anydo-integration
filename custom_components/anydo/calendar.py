@@ -18,7 +18,6 @@ from .api.task import Task
 from .const import (
     ALL_DAY,
     ALL_TASKS,
-    CHECKED,
     COMPLETED,
     CONF_EXTRA_LISTS,
     CONF_LIST_DUE_DATE,
@@ -28,7 +27,6 @@ from .const import (
     DATETIME,
     DESCRIPTION,
     DOMAIN,
-    DUE,
     DUE_DATE,
     DUE_TODAY,
     END,
@@ -39,7 +37,6 @@ from .const import (
     NOTES,
     OVERDUE,
     OWNER,
-    REMINDER_DATE,
     SERVICE_NEW_TASK,
     START,
     SUMMARY,
@@ -56,7 +53,6 @@ NEW_TASK_SERVICE_SCHEMA = vol.Schema(
         vol.Optional(TAGS): cv.ensure_list_csv,
         vol.Optional(OWNER): cv.string,
         vol.Exclusive(DUE_DATE, "due_date"): cv.string,
-        vol.Exclusive(REMINDER_DATE, "reminder_date"): cv.string,
     }
 )
 
@@ -181,17 +177,13 @@ def setup_platform(hass, config, add_entities):
                 due_date = datetime(due.year, due.month, due.day)
             # Format it in the manner Any.do expects
             due_date = dt.as_utc(due_date)
-            args.dueDate = int(datetime.timestamp(due_date))
-
-
-        if REMINDER_DATE in call.data:
-            reminder_date = dt.parse_datetime(call.data[REMINDER_DATE])
-            if reminder_date is None:
-                due = dt.parse_date(call.data[REMINDER_DATE])
-                reminder_date = datetime(due.year, due.month, due.day)
-            # Format it in the manner Any.do expects
-            reminder_date = dt.as_utc(reminder_date)
-            args["alert"] = int(datetime.timestamp(reminder_date))
+            args['dueDate'] = int(datetime.timestamp(due_date) * 1000)
+            args['alert'] = {
+                "type": "OFFSET",
+                "offset": 0,
+                "customTime": 0,
+                "repeatEndType": "REPEAT_END_NEVER",
+            }
 
         # Create the task
         Task.create(**args)
@@ -207,7 +199,7 @@ def _parse_due_date(timestamp) -> datetime | None:
     """Parse the due date dict into a datetime object."""
     if timestamp == 0:
         return None
-    return datetime.fromtimestamp(timestamp)
+    return datetime.fromtimestamp(timestamp / 1000)
 
 
 class AnydoListDevice(CalendarEventDevice):

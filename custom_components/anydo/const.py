@@ -8,8 +8,6 @@ CONF_LIST_WHITELIST = "include_lists"
 ALL_DAY = "all_day"
 # Attribute: All tasks in this list
 ALL_TASKS = "all_tasks"
-# Any.do API: "Completed" flag -- 1 if complete, else 0
-CHECKED = "checked"
 # Attribute: Is this task complete?
 COMPLETED = "completed"
 # Any.do API: What is this task about?
@@ -25,12 +23,9 @@ OWNER = "owner"
 DESCRIPTION = "description"
 # Calendar Platform: Used in the '_get_date()' method
 DATETIME = "dateTime"
-DUE = "due"
 # Attribute: When is this task due?
 # Service Call: When is this task due?
 DUE_DATE = "due_date"
-# Service Call: When should user be reminded of this task?
-REMINDER_DATE = "reminder_date"
 # Attribute: Is this task due today?
 DUE_TODAY = "due_today"
 # Calendar Platform: When a calendar event ends

@@ -149,6 +149,8 @@ class User(Resource):
 
     def add_task(self, task):
         """Add new task into internal storage."""
+        if not self.tasks_list:
+            self.tasks()
         if self.tasks_list:
             self.tasks_list.append(task)
         else:
