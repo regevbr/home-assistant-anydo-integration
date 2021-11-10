@@ -147,6 +147,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             )
         )
 
+    for device in list_devices:
+        device.update()
+
     add_entities(list_devices)
 
     def handle_new_task(call):
@@ -199,7 +202,7 @@ def _parse_due_date(timestamp) -> datetime | None:
     """Parse the due date dict into a datetime object."""
     if timestamp == 0:
         return None
-    return datetime.fromtimestamp(timestamp / 1000)
+    return datetime.fromtimestamp(timestamp / 1000, dt.UTC)
 
 
 class AnydoListDevice(CalendarEventDevice):
@@ -347,14 +350,17 @@ class AnydoListData:
         """
         task = {}
         # Fields are required to be in all returned task objects.
-        task[SUMMARY] = data.title
-        task[COMPLETED] = data.status == "CHECKED"
+        task[SUMMARY] = data["title"]
+        task[COMPLETED] = data["status"] == "CHECKED"
         task[DESCRIPTION] = f"https://desktop.any.do/agenda/tasks/{data[ID]}"
 
         # All task tags (optional parameter).
-        task[TAGS] = [
-            tag[NAME].lower() for tag in self._tags if tag[ID] in data.labels
-        ]
+        if data["labels"]:
+            task[TAGS] = [
+                tag[NAME].lower() for tag in self._tags if tag[ID] in data["labels"]
+            ]
+        else:
+            task[TAGS] = []
 
         if self._tag_whitelist and (
             not any(tag in task[TAGS] for tag in self._tag_whitelist)
@@ -369,8 +375,8 @@ class AnydoListData:
         # complete the task.
         # Generally speaking, that means right now.
         task[START] = dt.utcnow()
-        if data.dueDate != 0:
-            task[END] = _parse_due_date(data.dueDate)
+        if data["dueDate"] != 0:
+            task[END] = _parse_due_date(data["dueDate"])
 
             if self._due_date_days is not None and (
                 task[END] > dt.utcnow() + self._due_date_days
@@ -483,9 +489,9 @@ class AnydoListData:
 
         events = []
         for task in list_task_data:
-            if task.dueDate == 0:
+            if task["dueDate"] == 0:
                 continue
-            due_date = _parse_due_date(task.dueDate)
+            due_date = _parse_due_date(task["dueDate"])
             if not due_date:
                 continue
             midnight = dt.as_utc(
@@ -508,7 +514,7 @@ class AnydoListData:
                     "start": due_date_value,
                     "end": due_date_value,
                     "allDay": True,
-                    "summary": task["note"],
+                    "summary": task["title"],
                 }
                 events.append(event)
         return events
