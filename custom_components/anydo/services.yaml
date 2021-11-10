@@ -30,8 +30,7 @@ new_task:
     owner:
       name: Owner
       description: The owner of this task.
-      example: Jhon
-      default: Me
+      example: john@doe.com
       selector:
         text:
     due_date:

@@ -85,7 +85,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 SCAN_INTERVAL = timedelta(minutes=15)
 
 
-def setup_platform(hass, config, add_entities):
+def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Any.do platform."""
     username = config.get(CONF_USERNAME)
     password = config.get(CONF_PASSWORD)
@@ -246,7 +246,7 @@ class AnydoListDevice(CalendarEventDevice):
 
     async def async_get_events(self, hass, start_date, end_date):
         """Get all events in a specific time frame."""
-        return await self.data.async_get_events(start_date, end_date)
+        return await self.data.async_get_events(hass, start_date, end_date)
 
     @property
     def extra_state_attributes(self):
@@ -463,19 +463,23 @@ class AnydoListData:
 
         return event
 
-    async def async_get_events(self, start_date, end_date):
+    async def async_get_events(self, hass, start_date, end_date):
         """Get all tasks in a specific time frame."""
-        user = self._api.get_user()
 
-        if self._id is None:
-            list_task_data = [
-                task
-                for task in user.tasks()
-                if not self._list_id_whitelist
-                or task[LIST_ID] in self._list_id_whitelist
-            ]
-        else:
-            list_task_data = [task for task in user.tasks() if task[LIST_ID] == self._id]
+        def get_list_task_data():
+            user = self._api.get_user()
+
+            if self._id is None:
+                return [
+                    task
+                    for task in user.tasks()
+                    if not self._list_id_whitelist
+                       or task[LIST_ID] in self._list_id_whitelist
+                ]
+            else:
+                return [task for task in user.tasks() if task[LIST_ID] == self._id]
+
+        list_task_data = await hass.async_add_executor_job(get_list_task_data)
 
         events = []
         for task in list_task_data:
@@ -487,8 +491,7 @@ class AnydoListData:
             midnight = dt.as_utc(
                 dt.parse_datetime(
                     due_date.strftime("%Y-%m-%d")
-                    + "T00:00:00"
-                    + user.timezone
+                    + "T00:00:00Z"
                 )
             )
 
