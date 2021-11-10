@@ -351,6 +351,7 @@ class AnydoListData:
         task = {}
         # Fields are required to be in all returned task objects.
         task[SUMMARY] = data["title"]
+        task[OWNER] = data["assignedTo"]
         task[COMPLETED] = data["status"] == "CHECKED"
         task[DESCRIPTION] = f"https://desktop.any.do/agenda/tasks/{data[ID]}"
 
