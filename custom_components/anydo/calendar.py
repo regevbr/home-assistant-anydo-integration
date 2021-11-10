@@ -377,7 +377,7 @@ class AnydoListData:
         # complete the task.
         # Generally speaking, that means right now.
         task[START] = dt.utcnow()
-        if data.dueDate is not 0:
+        if data.dueDate != 0:
             task[END] = _parse_due_date(data.dueDate)
 
             if self._due_date_days is not None and (
@@ -487,7 +487,7 @@ class AnydoListData:
 
         events = []
         for task in list_task_data:
-            if task.dueDate is 0:
+            if task.dueDate == 0:
                 continue
             due_date = _parse_due_date(task.dueDate)
             if not due_date:

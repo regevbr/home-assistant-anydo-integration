@@ -80,7 +80,7 @@ class Request():
         return response
 
     @staticmethod
-    def _prepare_request_arguments(cls, **options):
+    def _prepare_request_arguments(**options):
         """Return a dict representing default request arguments."""
         options = options.copy()
 
@@ -106,7 +106,7 @@ class Request():
         return request_arguments
 
     @staticmethod
-    def _check_response_for_errors(cls, response):
+    def _check_response_for_errors(response):
         """Raise and exception in case of HTTP error during API call, mapped to custom errors."""
         # bug in PyLint, seems not merged in 1.5.5 yet https://github.com/PyCQA/pylint/pull/742
         try:
