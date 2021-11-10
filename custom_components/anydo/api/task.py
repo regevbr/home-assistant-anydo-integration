@@ -6,7 +6,6 @@
 `Task` class.
 """
 
-from . import request
 from .constants import CONSTANTS, TASK_STATUSES
 from .resource import Resource
 
@@ -46,9 +45,9 @@ class Task(Resource):
         self['status'] = 'DONE'
         self.save()
 
-    def session(self):
-        """Shortcut to retrive user session for requests."""
-        return self.user.session()
+    def request(self):
+        """Shortcut to retrive user request for requests."""
+        return self.user.request()
 
     def subtasks(self):
         """Return a list with subtasks of current task for same user."""
@@ -114,10 +113,9 @@ class Task(Resource):
             'message': message
         }
 
-        response_obj = request.post(
+        response_obj = self.request().post(
             url=self.get_endpoint() + '/' + self['id'] + '/share',
-            json=json_data,
-            session=self.session()
+            json=json_data
         )
 
         self.data_dict = response_obj

@@ -6,9 +6,7 @@ anydo_api.client.
 `Client` class.
 """
 
-import requests
-
-from . import request
+from .request import Request
 from .constants import CONSTANTS
 from .user import User
 
@@ -26,22 +24,24 @@ class Client(object):
         self.email = email
         self.password = password
         self.user = None
+        self._request = None
 
     def get_user(self, refresh=False):
         """Return a user object currently logged in."""
+        if self._request is None:
+            self._request = Request(self.__log_in)
+
         if not self.user or refresh:
-            session = self.__log_in()
-            data = request.get(
-                url=CONSTANTS.get('ME_URL'),
-                session=session
+            data = self._request.get(
+                url=CONSTANTS.get('ME_URL')
             )
 
             data.update({'password': self.password})
-            self.user = User(data_dict=data, session=session)
+            self.user = User(data_dict=data, request=self._request)
 
         return self.user
 
-    def __log_in(self):
+    def __log_in(self, request):
         """
         Authentication base on `email` and `password`.
 
@@ -54,15 +54,11 @@ class Client(object):
         }
 
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        session = requests.Session()
 
         request.post(
             url=CONSTANTS.get('LOGIN_URL'),
-            session=session,
             headers=headers,
             data=credentials,
             response_json=False
         )
-
-        return session
 

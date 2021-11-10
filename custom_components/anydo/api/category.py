@@ -28,9 +28,9 @@ class Category(Resource):
         super(Category, self).__init__(data_dict)
         self.user = user
 
-    def session(self):
-        """Shortcut to retrieve user session for requests."""
-        return self.user.session()
+    def request(self):
+        """Shortcut to retrieve user request for requests."""
+        return self.user.request()
 
     def mark_default(self):
         """
@@ -48,9 +48,9 @@ class Category(Resource):
         self.save()
         return self
 
-    def tasks(self):
+    def tasks(self, refresh=False):
         """Return a list of the user tasks that belongs to selected category."""
-        tasks = self.user.tasks()
+        tasks = self.user.tasks(refresh=refresh)
         return [task for task in tasks if task.categoryId == self['id']]
 
     def add_task(self, task):

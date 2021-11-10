@@ -45,17 +45,13 @@ NAME = "name"
 # Attribute: Is this task overdue?
 OVERDUE = "overdue"
 # Any.do API: Look up the list ID a Task belongs to
-LIST_ID = "list_id"
+LIST_ID = "categoryId"
 # Service Call: What list do you want a Task added to?
 LIST_NAME = "list"
-# Any.do API: Fetch all lists
-LISTS = "lists"
 # Calendar Platform: When does a calendar event start?
 START = "start"
 # Calendar Platform: What is the next calendar event about?
 SUMMARY = "summary"
-# Any.do API: Fetch all Tasks
-TASKS = "items"
 
 DOMAIN = "anydo"
 

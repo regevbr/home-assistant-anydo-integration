@@ -6,7 +6,6 @@
 `User` class.
 """
 
-from . import request
 from . import errors
 from .category import Category
 from .constants import CONSTANTS
@@ -25,13 +24,13 @@ class User(Resource):
     """
 
     _endpoint = CONSTANTS.get('ME_URL')
-    _reserved_attrs = ('data_dict', 'session_obj', 'is_dirty')
+    _reserved_attrs = ('data_dict', 'request_obj', 'is_dirty')
     __alternate_endpoint = CONSTANTS.get('USER_URL')
 
-    def __init__(self, data_dict, session):
+    def __init__(self, data_dict, request):
         """Constructor for User."""
         super(User, self).__init__(data_dict)
-        self.session_obj = session
+        self.request_obj = request
         self.categories_list = None
         self.tasks_list = None
         self._pending_tasks = None
@@ -45,9 +44,9 @@ class User(Resource):
         """
         super(User, self).save(alternate_endpoint=self.get_endpoint())
 
-    def session(self):
-        """Shortcut to retrieve object session for requests."""
-        return self.session_obj
+    def request(self):
+        """Shortcut to retrieve object request for requests."""
+        return self.request_obj
 
     def destroy(self, alternate_endpoint=None):
         """
@@ -81,9 +80,8 @@ class User(Resource):
                 'includeDone': str(include_done).lower(),
             }
 
-            tasks_data = request.get(
+            tasks_data = self.request().get(
                 url=CONSTANTS.get('TASKS_URL'),
-                session=self.session(),
                 params=params
             )
 
@@ -102,9 +100,8 @@ class User(Resource):
                 'includeDeleted': str(include_deleted).lower(),
             }
 
-            categories_data = request.get(
+            categories_data = self.request().get(
                 url=CONSTANTS.get('CATEGORIES_URL'),
-                session=self.session(),
                 params=params
             )
 
@@ -135,9 +132,8 @@ class User(Resource):
                 }}
             }
 
-            labels_data = request.post(
+            labels_data = self.request().post(
                 url=CONSTANTS.get('SYNC_URL'),
-                session=self.session(),
                 params=params,
                 json=payload
             )['models']['label']['items']
@@ -176,9 +172,8 @@ class User(Resource):
         Empty list otherwise.
         """
         if not self._pending_tasks or refresh:
-            response_obj = request.get(
-                url=self.get_endpoint() + '/pending',
-                session=self.session()
+            response_obj = self.request().get(
+                url=self.get_endpoint() + '/pending'
             )
 
             self._pending_tasks = response_obj['pendingTasks']
@@ -205,9 +200,8 @@ class User(Resource):
                 'Eather :pending_task_id or :pending_task argument is required.'
             )
 
-        response_obj = request.post(
-            url=self.get_endpoint() + '/pending/' + task_id + '/accept',
-            session=self.session()
+        response_obj = self.request().post(
+            url=self.get_endpoint() + '/pending/' + task_id + '/accept'
         )
 
         return response_obj

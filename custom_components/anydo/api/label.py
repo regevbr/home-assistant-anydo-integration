@@ -17,16 +17,16 @@ class Label(Resource):
     """
 
     _endpoint = CONSTANTS.get('SYNC_URL')
-    _reserved_attrs = ('user','data_dict',"is_dirty")
+    _reserved_attrs = ('user', 'data_dict', "is_dirty")
 
     def __init__(self, data_dict, user):
         "Constructor for Task"
         super(Label, self).__init__(data_dict)
         self.user = user
 
-    def session(self):
-        """Shortcut to retrive user session for requests."""
-        return self.user.session()
+    def request(self):
+        """Shortcut to retrive request session for requests."""
+        return self.user.request()
 
     def tasks(self):
         """Return a list of the user tasks that belongs to selected label."""

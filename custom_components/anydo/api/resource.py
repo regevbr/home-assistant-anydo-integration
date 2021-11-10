@@ -11,7 +11,6 @@ import random
 import six
 
 from . import errors
-from . import request
 
 __all__ = ('Resource')
 
@@ -75,10 +74,9 @@ class Resource(object):
         if self.is_dirty:
             processed_data = self._process_data_before_save(self.data_dict)
 
-            request.put(
+            self.request().put(
                 url=alternate_endpoint or (self.get_endpoint() + '/' + self['id']),
-                json=processed_data,
-                session=self.session()
+                json=processed_data
             )
 
             self.is_dirty = False
@@ -87,10 +85,9 @@ class Resource(object):
 
     def destroy(self, alternate_endpoint=None):
         """Delete the tasks by remote API call."""
-        request.delete(
+        self.request().delete(
             url=alternate_endpoint or (self.get_endpoint() + '/' + self['id']),
-            json=self.data_dict,
-            session=self.session()
+            json=self.data_dict
         )
 
         return self
@@ -98,15 +95,14 @@ class Resource(object):
     delete = destroy
 
     #pylint: disable=no-self-use
-    def session(self):
-        """Shortcut to retrive object session for requests."""
+    def request(self):
+        """Shortcut to retrive object for requests."""
         raise errors.MethodNotImplementedError('Need to be implemented in the class descendant')
 
     def refresh(self, alternate_endpoint=None):
         """Reload resource data from remote service."""
-        self.data_dict = request.get(
-            url=alternate_endpoint or (self.get_endpoint() + '/' + self['id']),
-            session=self.session()
+        self.data_dict = self.request().get(
+            url=alternate_endpoint or (self.get_endpoint() + '/' + self['id'])
         )
 
         return self
@@ -165,9 +161,8 @@ class Resource(object):
             'includeDone'   : 'false',
         }
 
-        response_obj = request.post(
+        response_obj = user.request().post(
             url=cls._endpoint,
-            session=user.session(),
             json=[json_data],
             params=params
         )

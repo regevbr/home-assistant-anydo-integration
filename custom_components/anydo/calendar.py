@@ -35,7 +35,6 @@ from .const import (
     ID,
     LIST_ID,
     LIST_NAME,
-    LISTS,
     NAME,
     NOTES,
     OVERDUE,
@@ -45,7 +44,6 @@ from .const import (
     START,
     SUMMARY,
     TAGS,
-    TASKS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -160,10 +158,8 @@ def setup_platform(hass, config, add_entities):
         list_name = call.data[LIST_NAME]
         list_id = list_id_lookup[list_name.lower()]
 
-        newTaskUser = api.get_user(refresh=True)
-
         args = {
-            'user': newTaskUser,
+            'user': api.get_user(),
             'title': call.data[CONTENT],
             'categoryId': list_id,
             'repeatingMethod': 'TASK_REPEAT_OFF',
@@ -185,7 +181,7 @@ def setup_platform(hass, config, add_entities):
                 due_date = datetime(due.year, due.month, due.day)
             # Format it in the manner Any.do expects
             due_date = dt.as_utc(due_date)
-            args["dueDate"] = int(due_date.timestamp())
+            args.dueDate = int(datetime.timestamp(due_date))
 
 
         if REMINDER_DATE in call.data:
@@ -195,7 +191,7 @@ def setup_platform(hass, config, add_entities):
                 reminder_date = datetime(due.year, due.month, due.day)
             # Format it in the manner Any.do expects
             reminder_date = dt.as_utc(reminder_date)
-            args["alert"] = int(reminder_date.timestamp())
+            args["alert"] = int(datetime.timestamp(reminder_date))
 
         # Create the task
         Task.create(**args)
@@ -207,16 +203,11 @@ def setup_platform(hass, config, add_entities):
     )
 
 
-def _parse_due_date(data: dict, gmt_string) -> datetime | None:
+def _parse_due_date(timestamp) -> datetime | None:
     """Parse the due date dict into a datetime object."""
-    # Add time information to date only strings.
-    if len(data["date"]) == 10:
-        return datetime.fromisoformat(data["date"]).replace(tzinfo=dt.UTC)
-    if not (nowtime := dt.parse_datetime(data["date"])):
+    if timestamp == 0:
         return None
-    if nowtime.tzinfo is None:
-        data["date"] += gmt_string
-    return dt.as_utc(nowtime)
+    return datetime.fromtimestamp(timestamp)
 
 
 class AnydoListDevice(CalendarEventDevice):
@@ -263,7 +254,7 @@ class AnydoListDevice(CalendarEventDevice):
 
     async def async_get_events(self, hass, start_date, end_date):
         """Get all events in a specific time frame."""
-        return await self.data.async_get_events(hass, start_date, end_date)
+        return await self.data.async_get_events(start_date, end_date)
 
     @property
     def extra_state_attributes(self):
@@ -364,13 +355,13 @@ class AnydoListData:
         """
         task = {}
         # Fields are required to be in all returned task objects.
-        task[SUMMARY] = data[CONTENT]
-        task[COMPLETED] = data[CHECKED] == 1
-        task[DESCRIPTION] = f"https://any.do/showTask?id={data[ID]}"
+        task[SUMMARY] = data.title
+        task[COMPLETED] = data.status == "CHECKED"
+        task[DESCRIPTION] = f"https://desktop.any.do/agenda/tasks/{data[ID]}"
 
         # All task tags (optional parameter).
         task[TAGS] = [
-            tag[NAME].lower() for tag in self._tags if tag[ID] in data[TAGS]
+            tag[NAME].lower() for tag in self._tags if tag[ID] in data.labels
         ]
 
         if self._tag_whitelist and (
@@ -386,10 +377,8 @@ class AnydoListData:
         # complete the task.
         # Generally speaking, that means right now.
         task[START] = dt.utcnow()
-        if data[DUE] is not None:
-            task[END] = _parse_due_date(
-                data[DUE], self._api.state["user"]["tz_info"]["gmt_string"]
-            )
+        if data.dueDate is not 0:
+            task[END] = _parse_due_date(data.dueDate)
 
             if self._due_date_days is not None and (
                 task[END] > dt.utcnow() + self._due_date_days
@@ -482,37 +471,32 @@ class AnydoListData:
 
         return event
 
-    async def async_get_events(self, hass, start_date, end_date):
+    async def async_get_events(self, start_date, end_date):
         """Get all tasks in a specific time frame."""
         user = self._api.get_user()
-        user.categories()
+
         if self._id is None:
             list_task_data = [
                 task
-                for task in self._api.state[TASKS]
+                for task in user.tasks()
                 if not self._list_id_whitelist
                 or task[LIST_ID] in self._list_id_whitelist
             ]
         else:
-            list_data = await hass.async_add_executor_job(
-                self._api.lists.get_data, self._id
-            )
-            list_task_data = list_data[TASKS]
+            list_task_data = [task for task in user.tasks() if task[LIST_ID] == self._id]
 
         events = []
         for task in list_task_data:
-            if task["due"] is None:
+            if task.dueDate is 0:
                 continue
-            due_date = _parse_due_date(
-                task["due"], self._api.state["user"]["tz_info"]["gmt_string"]
-            )
+            due_date = _parse_due_date(task.dueDate)
             if not due_date:
                 continue
             midnight = dt.as_utc(
                 dt.parse_datetime(
                     due_date.strftime("%Y-%m-%d")
                     + "T00:00:00"
-                    + self._api.state["user"]["tz_info"]["gmt_string"]
+                    + user.timezone
                 )
             )
 
@@ -525,27 +509,27 @@ class AnydoListData:
                     due_date_value = due_date.isoformat()
                 event = {
                     "uid": task["id"],
-                    "title": task["content"],
+                    "title": task["title"],
                     "start": due_date_value,
                     "end": due_date_value,
                     "allDay": True,
-                    "summary": task["content"],
+                    "summary": task["note"],
                 }
                 events.append(event)
         return events
 
     def update(self):
         """Get the latest data."""
+        user = self._api.get_user(refresh=True)
         if self._id is None:
-            self._api.get_user(refresh=True)
             list_task_data = [
                 task
-                for task in self._api.state[TASKS]
+                for task in user.tasks()
                 if not self._list_id_whitelist
                 or task[LIST_ID] in self._list_id_whitelist
             ]
         else:
-            list_task_data = self._api.lists.get_data(self._id)[TASKS]
+            list_task_data = [task for task in user.tasks() if task[LIST_ID] == self._id]
 
         # If we have no data, we can just return right away.
         if not list_task_data:
